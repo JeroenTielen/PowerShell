@@ -1,78 +1,23 @@
-# FSLogix Cleanup
+# FSLogix_Cleanup_Containers
 
-Will automatically clean up stale FSLogix container folders based on the specified criteria.
+This script checks the path where FSLogix containers are stored. For each folder it will check the active directory for the status of the specific useraccount.
+    The following checks will be performed: 
 
+        1. Does the user still exists? 
+        2. Is the user disabled? 
+        3. What is the last logon date? 
+
+    There are a couple of variables to set to tune the script for your needs: 
+   
+        1. $FSLogixPath       : The location where the containers are stored.
+        2. $ExcludeFolders    : Is the location has folders which must not be processed you can add them here.
+        3. $DaysInactive      : Minimum amount of days when the last logon occured.
+        4. $DeleteDisabled    : Set this to 0 or 1. 0 will NOT delete conainters from disabled user accounts. 1 will ;) 
+        5. $DeleteNotExisting : When an user is deleted and the conainers aren't deleted set this to 1 and the containers will be deleted.
+        6. $DeleteInactive    : Users with a last logon longer the the $DaysInactive will be deleted if this is set to 1. 
+        7. $FlipFlopEnabled   : Set this to 0 when the containers are stored in a folder starting with the user SID. When the folder starts with the username set this to 1. 
+        8. $DryRun            : When this is set to 1, nothing will be deleted regardless the settings. This will also output more information which containers are claiming space.
+        
 ## Syntax
 
-```powershell
-".\FSLogix Cleanup.ps1" 
-    -ContainerPath <string>
-    [-DeleteRemoved]
-    [-DeleteDisabled]
-    [-DeleteInactive]
-    [-ExcludeFolders <array>]
-    [-InactiveDays <int>]
-    [-NoFlipFlop]
-    [-LogName <string>]
-    [-LogPath <string>]
-    [-Confirm]
-    [-Whatif]
-```
-
-## Options
-
-### -ContainerPath <string>
-
-The full (UNC) path to the FSLogix container directory.
-
-```powershell
--Containerpath "\\mystorageaccount.file.core.windows.net\share"
-```
-
-### [-DeleteRemoved]
-
-If set, containers belonging to removed/non-existing users will be deleted.
-
-### [-DeleteDisabled]
-
-If set, containers belonging to disabled users will be deleted.
-
-### [-DeleteInactive]
-
-If set, containers belonging to inactive users will be deleted.
-
-### [-ExcludeFolders <array>]
-
-Array of strings with folder names to exclude in recursion.
-
-```powershell
--ExcludeFolders @("folder1","folder2")
-```
-
-### [-InactiveDays <int>]
-
-Number of days a user must have not logged into Active Directory to be considered inactive. Defaults to 90 days if not specified.
-
-```powershell
--InactiveDays 180
-```
-
-### [-LogName]
-
-Name that appears in the name of the log file. Defaults to 'FSLogixCleanUp'.
-
-### [-LogPath]
-
-If set to a full (UNC) path, the script will output the log file to this directory.
-
-### [-NoFlipFlop]
-
-If set, don't use the FlipFlop name convention (%username%\_%sid%) but use the default (%sid%\_%username%).
-
-### [-Confirm]
-
-If set, don't ask for confirmation before execution.
-
-### [-Whatif]
-
-If set, enables dry-run mode.
+Open script in your PowerShell editor (Visual Studio Code, PowerShell ISE, etc), change the paramters and run, 
