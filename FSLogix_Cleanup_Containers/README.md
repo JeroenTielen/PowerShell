@@ -1,13 +1,13 @@
 # FSLogix_Cleanup_Containers
 
-This script checks the path where FSLogix containers are stored. For each folder it will check the active directory for the status of the specific useraccount.
+## This script checks the path where FSLogix containers are stored. For each folder it will check the active directory for the status of the specific useraccount.
     The following checks will be performed: 
 
         1. Does the user still exists? 
         2. Is the user disabled? 
         3. What is the last logon date? 
 
-# There are a couple of variables to set to tune the script for your needs: 
+## There are a couple of variables to set to tune the script for your needs: 
    
         1. $FSLogixPath       : The location where the containers are stored.
         2. $ExcludeFolders    : Is the location has folders which must not be processed you can add them here.
