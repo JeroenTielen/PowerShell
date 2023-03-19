@@ -35,7 +35,7 @@
 #>
 
 # Tune this variables to your needs
-$FSLogixPath = "\\ntxfs\userprofiles"                               # Set FSLogix containers path.
+$FSLogixPath = "\\NTX-Files\FSLogix"                                # Set FSLogix containers path.
 [string[]]$ExcludeFolders = @('FSLogix_Redirections', 'Template')   # Excluded directories from the FSLogix containers path.
 $DaysInactive = 90                                                  # Days of inactivity before FSLogix containers are removed. 
 $DeleteDisabled = 0                                                 # Delete containers from disabled users.
