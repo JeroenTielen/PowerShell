@@ -17,30 +17,31 @@
         6. $DeleteInactive    : Users with a last logon longer the the $DaysInactive will be deleted if this is set to 1. 
         7. $FlipFlopEnabled   : Set this to 0 when the containers are stored in a folder starting with the user SID. When the folder starts with the username set this to 1.
         8. $ShowTable         : Set this to 1 to show a table at the end of the script. 
-        9. $DryRun            : When this is set to 1, nothing will be deleted regardless the settings. This will also output more information which containers are claiming space.
+        8. $DryRun            : When this is set to 1, nothing will be deleted regardless the settings. This will also output more information which containers are claiming space.
 
 .DESCRIPTION
     Can automatically cleanup FSLogix containers if they match the criteria. This will reduce the used space.  
 
 .NOTES
-    Version    : 1.2
-    Date       : 19 March 2023 
+    Version    : 1.3
+    Date       : 21 March 2023 
     Created by : Jeroen Tielen - Tielen Consultancy B.V. 
     Email      : jeroen@tielenconsultancy.nl 
 
     History: 
-        1.0 : 12 June 2022 - Initial setup script,
+        1.0 : 12 June 2022 - Initial setup script.
         1.1 : 13 March 2023 - Add FlipFlop Switch.
-        1.2 : 19 March 2023 - Added table at the end.
+        1.2 : 19 March 2023 - Added beter layout.
+        1.3 : 23 March 2023 - Added table option.
 #>
 
 # Tune this variables to your needs
-$FSLogixPath = "\\NTX-Files\FSLogix"                                # Set FSLogix containers path.
+$FSLogixPath = "\\Nutanix-Files\FSLogix"                            # Set FSLogix containers path.
 [string[]]$ExcludeFolders = @('FSLogix_Redirections', 'Template')   # Excluded directories from the FSLogix containers path.
 $DaysInactive = 90                                                  # Days of inactivity before FSLogix containers are removed. 
-$DeleteDisabled = 0                                                 # Delete containers from disabled users.
-$DeleteNotExisting = 0                                              # Delete containers from not existing users.
-$DeleteInactive = 0                                                 # Delete containers from inactive users.
+$DeleteDisabled = 1                                                 # Delete containers from disabled users.
+$DeleteNotExisting = 1                                              # Delete containers from not existing users.
+$DeleteInactive = 1                                                 # Delete containers from inactive users.
 $FlipFlopEnabled = 1                                                # When 1 the default naming convention of the folders is used.
 $ShowTable = 1                                                      # Show table at the end of the script. 
 $DryRun = 1                                                         # Override switch, nothing will be deleted, script will also output user names and what will be deleted. 
@@ -70,26 +71,28 @@ Foreach ($PathItem in $PathItems) {
     Try { 
         $Information = Get-ADUser -Identity $UserName -Properties sAMAccountName, Enabled, lastLogon, lastLogonDate
         If ($False -eq $Information.Enabled) {
-            $UsersTable += (@{UserName = "$UserName"; State = "Disabled" })
+            $UserSpace = (Get-ChildItem -Path "$PathItem" | Measure Length -Sum).Sum / 1Gb
+            $UsersTable += (@{UserName = "$UserName"; State = "Disabled"; SpaceinGB = "$UserSpace" })
             If ($DryRun -eq 1) { Write-host "User $UserName is disabled. Dryrun activated, nothing will be deleted." -ForegroundColor Green }
-            $PotentialSpaceReclamation = $PotentialSpaceReclamation + (Get-ChildItem -Path "$PathItem" | Measure Length -Sum).Sum / 1Gb
-            $SpaceDisabled = $SpaceDisabled + (Get-ChildItem -Path "$PathItem" | Measure Length -Sum).Sum / 1Gb
+            $PotentialSpaceReclamation = $PotentialSpaceReclamation + $UserSpace
+            $SpaceDisabled = $SpaceDisabled + $UserSpace
             If ($DeleteDisabled -eq 1) {
                 If ($DryRun -eq 0) {
                     Write-Host "Deleting containers from $UserName" -ForegroundColor Red
-                    $SpaceReclaimed = $SpaceReclaimed + (Get-ChildItem -Path "$PathItem" | Measure Length -Sum).Sum / 1Gb
+                    $SpaceReclaimed = $SpaceReclaimed + $UserSpace
                     Remove-Item -Path $PathItem -Recurse -Force
                 }
             }
             ElseIf ($Information.lastLogonDate -lt ((Get-Date).Adddays( - ($DaysInactive)))) {
-                $UsersTable += (@{UserName = "$UserName"; State = "Inactive" })
+                $UserSpace = (Get-ChildItem -Path "$PathItem" | Measure Length -Sum).Sum / 1Gb
+                $UsersTable += (@{UserName = "$UserName"; State = "Inactive"; SpaceinGB = "$UserSpace" })
                 If ($DryRun -eq 1) { Write-Host "User $UserName is more than $DaysInactive days inactive. Dryrun activated, nothing will be deleted." -ForegroundColor Green }
-                $PotentialSpaceReclamation = $PotentialSpaceReclamation + (Get-ChildItem -Path "$PathItem" | Measure Length -Sum).Sum / 1Gb
-                $SpaceInactive = $SpaceInactive + (Get-ChildItem -Path "$PathItem" | Measure Length -Sum).Sum / 1Gb
+                $PotentialSpaceReclamation = $PotentialSpaceReclamation + $UserSpace
+                $SpaceInactive = $SpaceInactive + $UserSpace
                 If ($DeleteInactive -eq 1) {
                     If ($DryRun -eq 0) {
                         Write-Host "Deleting containers from $UserName" -ForegroundColor Red
-                        $SpaceReclaimed = $SpaceReclaimed + (Get-ChildItem -Path "$PathItem" | Measure Length -Sum).Sum / 1Gb
+                        $SpaceReclaimed = $SpaceReclaimed + $UserSpace
                         Remove-Item -Path $PathItem -Recurse -Force
                     }
                 }
@@ -97,14 +100,15 @@ Foreach ($PathItem in $PathItems) {
         }
     }
     Catch [Microsoft.ActiveDirectory.Management.ADIdentityNotFoundException] {
-        $UsersTable += (@{UserName = "$UserName"; State = "DoesntExist" })
+        $UserSpace = (Get-ChildItem -Path "$PathItem" | Measure Length -Sum).Sum / 1Gb
+        $UsersTable += (@{UserName = "$UserName"; State = "DoesntExist"; SpaceinGB = "$UserSpace" })
         If ($DryRun -eq 1) { Write-Host "User $UserName doesn't exist. Dryrun activated, nothing will be deleted." -ForegroundColor Green }
-        $PotentialSpaceReclamation = $PotentialSpaceReclamation + (Get-ChildItem -Path "$PathItem" | Measure Length -Sum).Sum / 1Gb
-        $SpaceNotExisting = $SpaceNotExisting + (Get-ChildItem -Path "$PathItem" | Measure Length -Sum).Sum / 1Gb
+        $PotentialSpaceReclamation = $PotentialSpaceReclamation + $UserSpace
+        $SpaceNotExisting = $SpaceNotExisting + $UserSpace
         If ($DeleteNotExisting -eq 1) {
             If ($DryRun -eq 0) {
                 Write-Host "Deleting containers from $UserName" -ForegroundColor Red
-                $SpaceReclaimed = $SpaceReclaimed + (Get-ChildItem -Path "$PathItem" | Measure Length -Sum).Sum / 1Gb
+                $SpaceReclaimed = $SpaceReclaimed + $UserSpace
                 Remove-Item -Path $PathItem -Recurse -Force
             }
         }
@@ -117,10 +121,12 @@ $SpaceDisabled = "{0:N2} GB" -f $SpaceDisabled
 $SpaceNotExisting = "{0:N2} GB" -f $SpaceNotExisting
 $SpaceInactive = "{0:N2} GB" -f $SpaceInactive
 
+
+
 Write-Host ""
 If ($ShowTable -eq 1) {
     Write-Host "========================================="
-    $UsersTable | ForEach { [PSCustomObject]$_ } | Format-Table UserName, State
+    $UsersTable | ForEach { [PSCustomObject]$_ } | Format-Table UserName, State, SpaceinGB 
 }
 Write-Host "========================================="
 Write-Host "Processed Container Folderss:"$Counter
